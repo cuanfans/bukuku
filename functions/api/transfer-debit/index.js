@@ -8,7 +8,7 @@ export const onRequestGet = async ({ request, env, data }) => {
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
 
-    // Menambahkan JOIN ke tabel users untuk mendapatkan nama_kasir
+    // Perbaikan: Tambahkan JOIN ke tabel users untuk mengambil username
     let queryBase = `FROM transfer_debit t LEFT JOIN users u ON t.user_id = u.id WHERE 1=1`;
     let queryParams = [];
 
@@ -22,10 +22,10 @@ export const onRequestGet = async ({ request, env, data }) => {
       queryParams.push(startDate, endDate);
     }
 
-    // 1. Hitung total data untuk pagination
+    // Hitung total untuk pagination
     const totalRow = await env.DB.prepare(`SELECT COUNT(*) as total ${queryBase}`).bind(...queryParams).first();
     
-    // 2. Ambil data lengkap dengan nama_kasir
+    // Ambil data lengkap dengan nama_kasir
     const { results } = await env.DB.prepare(`SELECT t.*, u.username as nama_kasir ${queryBase} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`)
       .bind(...queryParams, limit, offset)
       .all();
@@ -47,19 +47,19 @@ export const onRequestGet = async ({ request, env, data }) => {
 
 export const onRequestPost = async ({ request, env, data }) => {
   try {
-    const { tanggal, biaya, keterangan, foto_struk } = await request.json();
+    const { tanggal, biaya, keterangan } = await request.json();
     const userId = data.user.id;
 
     if (!biaya || biaya < 0) {
       return new Response(JSON.stringify({ error: 'Biaya tidak valid' }), { status: 400 });
     }
 
-    // Status langsung 'lunas' agar konsisten dengan pencatatan manual
+    // Status diset lunas agar saldo langsung terpotong via trigger
     await env.DB.prepare(`
-      INSERT INTO transfer_debit (tanggal, biaya, keterangan, status, user_id, foto_struk)
-      VALUES (?, ?, ?, 'lunas', ?, ?)
+      INSERT INTO transfer_debit (tanggal, biaya, keterangan, status, user_id)
+      VALUES (?, ?, ?, 'lunas', ?)
     `).bind(
-      tanggal, biaya, keterangan, userId, foto_struk || null
+      tanggal, biaya, keterangan, userId
     ).run();
 
     return new Response(JSON.stringify({ success: true }), { status: 201 });
