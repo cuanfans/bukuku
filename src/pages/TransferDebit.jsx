@@ -95,18 +95,22 @@ const TransferDebit = () => {
       
       const response = await api.get(url);
       
-      // PERBAIKAN: Akses response.data
-      let transfersData = Array.isArray(response.data) ? response.data : [];
+      // PERBAIKAN: Akses .data (Axios) lalu akses .data (Struktur API Anda)
+      const result = response.data;
+      let transfersData = [];
+
+      if (result && result.data && Array.isArray(result.data)) {
+        transfersData = result.data;
+      } else if (Array.isArray(result)) {
+        // Fallback jika API mengembalikan array murni
+        transfersData = result;
+      }
       
       if (user?.role === 'owner' && selectedCashier !== 'all') {
         transfersData = transfersData.filter(t => t.user_id === parseInt(selectedCashier));
       }
       
       setTransfers(transfersData);
-    } catch (error) {
-      console.error('Error loading transfer debit:', error);
-      setTransfers([]);
-    }
   };
 
   const loadGrafik = async () => {
