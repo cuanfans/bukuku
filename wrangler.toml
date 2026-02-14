@@ -5,8 +5,8 @@ pages_build_output_dir = "dist"
 # Konfigurasi Database D1
 [[d1_databases]]
 binding = "DB"
-database_name = "bukuku-db"
-database_id = "MASUKKAN_ID_DATABASE_D1_ANDA_DISINI"
+database_name = "bukuku"
+database_id = "81676e9f-fec8-4e3b-bc9a-0296d8c08617"
 
 # Variabel Environment Lokal (Untuk development)
 # Untuk production, set langsung di Dashboard Cloudflare > Settings
