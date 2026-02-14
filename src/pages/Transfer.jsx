@@ -118,17 +118,9 @@ const Transfer = () => {
         params.append('cashier_id', selectedCashier);
       }
       
-      // Filter by date range
-      if (startDate) {
-        params.append('startDate', startDate);
-      }
-      if (endDate) {
-        params.append('endDate', endDate);
-      }
-      
-      if (transferSearch) {
-        params.append('search', transferSearch);
-      }
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (transferSearch) params.append('search', transferSearch);
       
       params.append('page', pagination.page);
       params.append('limit', pagination.limit);
@@ -137,13 +129,16 @@ const Transfer = () => {
       
       const response = await api.get(url);
       
-      if (response.data && response.pagination) {
-        const transfersData = Array.isArray(response.data) ? response.data : [];
-        setTransfers(transfersData);
-        setPagination(response.pagination);
+      // PERBAIKAN: Selalu akses response.data karena menggunakan Axios
+      const resultData = response.data;
+
+      if (resultData && resultData.data && resultData.pagination) {
+        // Jika backend mengirim objek dengan pagination
+        setTransfers(Array.isArray(resultData.data) ? resultData.data : []);
+        setPagination(resultData.pagination);
       } else {
-        const transfersData = Array.isArray(response) ? response : [];
-        setTransfers(transfersData);
+        // Jika backend hanya mengirim array murni
+        setTransfers(Array.isArray(resultData) ? resultData : []);
       }
     } catch (error) {
       console.error('Error loading transfers:', error);
