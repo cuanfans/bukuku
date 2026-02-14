@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, User, Key, Shield } from 'lucide-react';
-import api from '../utils/api'; // Pastikan import tanpa kurung kurawal
+// PERBAIKAN: Menambahkan 'Users' ke dalam import
+import { Plus, Trash2, Edit2, User, Users, Key, Shield } from 'lucide-react'; 
+import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 
 const UserManagement = () => {
@@ -17,15 +18,11 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // PERBAIKAN: Gunakan endpoint tunggal '/user' sesuai backend functions
       const response = await api.get('/user'); 
       
-      // PERBAIKAN: Backend Cloudflare mengembalikan array langsung, bukan object {data: [...]}
-      // Jadi kita cek apakah response.data itu array
       if (Array.isArray(response.data)) {
         setUsers(response.data);
       } else if (response.data && Array.isArray(response.data.results)) {
-        // Fallback jika nanti backend berubah format
         setUsers(response.data.results);
       } else {
         setUsers([]);
@@ -50,7 +47,7 @@ const UserManagement = () => {
       if (editingId) {
         // Mode Edit
         const dataToSend = { ...formData, id: editingId };
-        if (!dataToSend.password) delete dataToSend.password; // Jangan kirim password kosong saat edit
+        if (!dataToSend.password) delete dataToSend.password; 
         
         await api.put('/user', dataToSend);
       } else {
@@ -61,7 +58,7 @@ const UserManagement = () => {
       setShowModal(false);
       setFormData({ username: '', password: '', role: 'kasir' });
       setEditingId(null);
-      fetchUsers(); // Refresh list
+      fetchUsers(); 
     } catch (err) {
       setError(err.response?.data?.error || 'Gagal menyimpan user.');
     }
@@ -76,7 +73,6 @@ const UserManagement = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus user ini?')) return;
     try {
-      // Backend DELETE support via query param ?id=...
       await api.delete(`/user?id=${id}`);
       fetchUsers();
     } catch (err) {
@@ -90,6 +86,7 @@ const UserManagement = () => {
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+          {/* Ikon Users ini yang menyebabkan error sebelumnya jika tidak diimport */}
           <Users className="mr-2" /> Manajemen User
         </h2>
         <button 
