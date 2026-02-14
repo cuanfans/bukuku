@@ -86,22 +86,18 @@ const TransferDebit = () => {
       let url = '/transfer-debit';
       const params = new URLSearchParams();
       
-      // Date filtering
-      if (startDate) {
-        params.append('startDate', startDate);
-      }
-      if (endDate) {
-        params.append('endDate', endDate);
-      }
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
       
       if (params.toString()) {
         url += '?' + params.toString();
       }
       
       const response = await api.get(url);
-      let transfersData = Array.isArray(response) ? response : [];
       
-      // Filter by cashier on frontend if owner
+      // PERBAIKAN: Akses response.data
+      let transfersData = Array.isArray(response.data) ? response.data : [];
+      
       if (user?.role === 'owner' && selectedCashier !== 'all') {
         transfersData = transfersData.filter(t => t.user_id === parseInt(selectedCashier));
       }
