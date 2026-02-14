@@ -8,24 +8,25 @@ export const onRequestGet = async ({ request, env, data }) => {
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
 
-    let queryBase = `FROM transfer_debit WHERE 1=1`;
+    // Menambahkan JOIN ke tabel users untuk mendapatkan nama_kasir
+    let queryBase = `FROM transfer_debit t LEFT JOIN users u ON t.user_id = u.id WHERE 1=1`;
     let queryParams = [];
 
     if (user.role !== 'owner') {
-      queryBase += ` AND user_id = ?`;
+      queryBase += ` AND t.user_id = ?`;
       queryParams.push(user.id);
     }
 
     if (startDate && endDate) {
-      queryBase += ` AND tanggal BETWEEN ? AND ?`;
+      queryBase += ` AND t.tanggal BETWEEN ? AND ?`;
       queryParams.push(startDate, endDate);
     }
 
     // 1. Hitung total data untuk pagination
     const totalRow = await env.DB.prepare(`SELECT COUNT(*) as total ${queryBase}`).bind(...queryParams).first();
     
-    // 2. Ambil data dengan urutan terbaru dan limit
-    const { results } = await env.DB.prepare(`SELECT * ${queryBase} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+    // 2. Ambil data lengkap dengan nama_kasir
+    const { results } = await env.DB.prepare(`SELECT t.*, u.username as nama_kasir ${queryBase} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`)
       .bind(...queryParams, limit, offset)
       .all();
 
@@ -54,14 +55,14 @@ export const onRequestPost = async ({ request, env, data }) => {
     }
 
     // Status langsung 'lunas' agar konsisten dengan pencatatan manual
-    const result = await env.DB.prepare(`
+    await env.DB.prepare(`
       INSERT INTO transfer_debit (tanggal, biaya, keterangan, status, user_id, foto_struk)
       VALUES (?, ?, ?, 'lunas', ?, ?)
     `).bind(
       tanggal, biaya, keterangan, userId, foto_struk || null
     ).run();
 
-    return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), { status: 201 });
+    return new Response(JSON.stringify({ success: true }), { status: 201 });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
