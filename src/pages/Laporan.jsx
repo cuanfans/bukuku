@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Printer, Download } from 'lucide-react'; // Ikon tambahan
+import { FileText, Printer, Download } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const Laporan = () => {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filterUser, setFilterUser] = useState(''); // Untuk filter owner
-  const [userList, setUserList] = useState([]); // List user untuk dropdown owner
+  const [filterUser, setFilterUser] = useState('');
+  const [userList, setUserList] = useState([]);
 
-  // Load Data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // 1. Jika Owner, ambil daftar user dulu untuk dropdown
+        // Load User List untuk Owner
         if (user.role === 'owner' && userList.length === 0) {
           const uRes = await api.get('/user');
           if (Array.isArray(uRes.data)) setUserList(uRes.data);
           else if (uRes.data.results) setUserList(uRes.data.results);
         }
 
-        // 2. Ambil Data Laporan Real
+        // Load Laporan
         let url = '/laporan';
-        // Jika kasir, otomatis difilter di backend. 
-        // Jika owner memilih user tertentu, tambahkan query param.
         if (user.role === 'owner' && filterUser) {
           url += `?user_id=${filterUser}`;
         }
@@ -42,17 +42,40 @@ const Laporan = () => {
     };
 
     fetchData();
-  }, [user.role, filterUser]); // Reload jika filter berubah
+  }, [user.role, filterUser]);
 
   const formatRupiah = (val) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Laporan Keuangan - ${user.username}`, 14, 20);
+    doc.autoTable({
+      head: [['Keterangan', 'Jumlah']],
+      body: [
+        ['Total Saldo Aplikasi Terpakai', formatRupiah(data?.saldo_aplikasi_terpakai)],
+        ['Total Transfer', formatRupiah(data?.total_transfer)],
+        ['Total Biaya Transfer', formatRupiah(data?.total_biaya_transfer)],
+        ['Total Biaya Transfer Debit', formatRupiah(data?.total_biaya_transfer_debit)],
+        ['Total Tarik Tunai', formatRupiah(data?.total_tarik_tunai)],
+        ['Total Biaya Tarik Tunai', formatRupiah(data?.total_biaya_tarik_tunai)],
+        ['Total Tarik Kartu Kredit', formatRupiah(data?.total_tarik_kredit)],
+        ['Total Biaya Tarik Kartu Kredit', formatRupiah(data?.total_biaya_tarik_kredit)],
+        ['Total Biaya Lain-lain', formatRupiah(data?.total_biaya_lain)],
+        ['Total Setor ke Admin', formatRupiah(data?.total_setor_ke_admin)],
+        ['TOTAL SALDO KESELURUHAN', formatRupiah(data?.total_saldo_keseluruhan)],
+      ],
+      startY: 30
+    });
+    doc.save('laporan_lengkap.pdf');
   };
 
   if (loading) return <div className="p-8 text-center">Memuat Data Laporan...</div>;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header & Filter */}
+      {/* Header */}
       <div className="bg-white rounded-lg shadow p-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -64,7 +87,6 @@ const Laporan = () => {
           </p>
         </div>
 
-        {/* Dropdown Filter User (Hanya Owner) */}
         {user.role === 'owner' && (
           <div className="flex items-center gap-2">
             <label className="text-sm font-bold">Pilih Kasir:</label>
@@ -82,24 +104,20 @@ const Laporan = () => {
         )}
       </div>
 
-      {/* Tabel Rincian (Sesuai Revisi Poin J) */}
+      {/* Tabel Rincian */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-6 border-b bg-gray-50 flex justify-between items-center">
           <h3 className="font-bold text-lg text-gray-700">Rincian Keuangan</h3>
-          {/* Tombol Dummy Print/Export (Sesuai mockup revisi) */}
           <div className="flex gap-2">
-            <button className="flex items-center text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200">
-              <Printer className="w-4 h-4 mr-1" /> Print
-            </button>
-            <button className="flex items-center text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200">
-              <Download className="w-4 h-4 mr-1" /> Export XLS
+            <button onClick={handleExportPDF} className="flex items-center text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200">
+              <Printer className="w-4 h-4 mr-1" /> Export PDF
             </button>
           </div>
         </div>
 
         <table className="w-full text-left">
           <tbody className="divide-y divide-gray-100">
-            {/* 1. Modal / Saldo Aplikasi */}
+            {/* 1. Modal */}
             <tr className="hover:bg-gray-50">
               <td className="p-4 text-gray-600">Total Saldo Aplikasi Terpakai (1-13)</td>
               <td className="p-4 font-bold text-right text-gray-800">{formatRupiah(data?.saldo_aplikasi_terpakai)}</td>
@@ -131,14 +149,29 @@ const Laporan = () => {
               <td className="p-4 font-bold text-right text-green-600">{formatRupiah(data?.total_biaya_tarik_tunai)}</td>
             </tr>
 
-            {/* 5. Setor Admin */}
+            {/* 5. Tarik Kredit (BARU) */}
+            <tr className="hover:bg-gray-50">
+              <td className="p-4 text-gray-600">Total Tarik Kartu Kredit</td>
+              <td className="p-4 font-bold text-right text-red-600">{formatRupiah(data?.total_tarik_kredit)}</td>
+            </tr>
+             <tr className="hover:bg-gray-50">
+              <td className="p-4 text-gray-600">Total Biaya Tarik Kredit (Admin 3%)</td>
+              <td className="p-4 font-bold text-right text-green-600">{formatRupiah(data?.total_biaya_tarik_kredit)}</td>
+            </tr>
+
+            {/* 6. Biaya Lain (BARU) */}
+            <tr className="hover:bg-gray-50 bg-blue-50">
+              <td className="p-4 text-gray-800 font-medium">Total Biaya Lain-lain</td>
+              <td className="p-4 font-bold text-right text-green-700">{formatRupiah(data?.total_biaya_lain)}</td>
+            </tr>
+
+            {/* 7. Setor Admin */}
             <tr className="hover:bg-gray-50 bg-yellow-50">
               <td className="p-4 text-gray-800 font-medium">Total Setor User ke Admin</td>
               <td className="p-4 font-bold text-right text-yellow-700">{formatRupiah(data?.total_setor_ke_admin)}</td>
             </tr>
           </tbody>
           
-          {/* TOTAL KESELURUHAN */}
           <tfoot className="bg-blue-900 text-white">
             <tr>
               <td className="p-5 text-lg font-bold">TOTAL SALDO KESELURUHAN</td>
