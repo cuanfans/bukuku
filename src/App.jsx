@@ -12,7 +12,10 @@ import Logs from './pages/Logs';
 import SetorAdmin from './pages/SetorAdmin'; // <--- JANGAN LUPA IMPORT INI
 import Layout from './layouts/Layout';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import TarikKredit from './pages/TarikKredit'; // <-- Tambahkan import ini
+import TarikKredit from './pages/TarikKredit';
+import BiayaLain from './pages/BiayaLain';
+import CetakStruk from './pages/CetakStruk';
+import Chat from './pages/Chat';
 
 // Komponen untuk memproteksi halaman (Redirect ke login jika belum login)
 const ProtectedRoute = ({ children }) => {
@@ -94,7 +97,14 @@ function App() {
               <Layout><Logs /></Layout>
             </ProtectedRoute>
           } />
-
+          <Route path="/biaya-lain" element={
+          <ProtectedRoute><Layout><BiayaLain /></Layout>
+          </ProtectedRoute>} />
+          <Route path="/cetak-struk" element={
+          <ProtectedRoute><Layout><CetakStruk /></Layout>
+          </ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Layout><Chat /></Layout>
+          </ProtectedRoute>} />
           {/* Catch all - Redirect ke dashboard jika halaman tidak ditemukan */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
