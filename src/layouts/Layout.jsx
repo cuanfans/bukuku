@@ -36,6 +36,9 @@ const Layout = ({ children }) => {
     { name: 'Transfer Debit', href: '/transfer-debit', icon: CreditCard },
     { name: 'Tarik Tunai', href: '/tarik-tunai', icon: Banknote },
     { name: 'Tarik Kartu Kredit', href: '/tarik-kredit', icon: CreditCard },
+    { name: 'Biaya Lain-lain', href: '/biaya-lain', icon: DollarSign },
+    { name: 'Cetak Struk', href: '/cetak-struk', icon: Printer },
+    { name: 'Chat Group', href: '/chat', icon: MessageSquare },
     { name: user?.role === 'owner' ? 'Laporan Lengkap' : 'Laporan Saya', href: '/laporan', icon: FileText },
   ];
 
