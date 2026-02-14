@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Printer, Download } from 'lucide-react';
+import { 
+  FileText, 
+  Printer, 
+  Download, 
+  Wallet, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  CreditCard, 
+  DollarSign, 
+  Banknote 
+} from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
@@ -18,14 +28,14 @@ const Laporan = () => {
       try {
         setLoading(true);
         
-        // Load User List untuk Owner
+        // Load User List untuk Owner (Dropdown Filter)
         if (user.role === 'owner' && userList.length === 0) {
           const uRes = await api.get('/user');
           if (Array.isArray(uRes.data)) setUserList(uRes.data);
           else if (uRes.data.results) setUserList(uRes.data.results);
         }
 
-        // Load Laporan
+        // Load Data Laporan
         let url = '/laporan';
         if (user.role === 'owner' && filterUser) {
           url += `?user_id=${filterUser}`;
@@ -73,9 +83,25 @@ const Laporan = () => {
 
   if (loading) return <div className="p-8 text-center">Memuat Data Laporan...</div>;
 
+  // Komponen Card Kecil
+  const SummaryCard = ({ title, value, icon: Icon, colorClass }) => (
+    <div className={`bg-white rounded-lg shadow p-4 border-l-4 ${colorClass}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+          <p className="text-xl font-bold text-gray-900">{formatRupiah(value)}</p>
+        </div>
+        <div className={`p-3 rounded-full ${colorClass.replace('border-', 'bg-').replace('500', '100')}`}>
+          <Icon className={`w-6 h-6 ${colorClass.replace('border-', 'text-')}`} />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="max-w-6xl mx-auto space-y-6">
+      
+      {/* Header & Filter */}
       <div className="bg-white rounded-lg shadow p-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -104,10 +130,62 @@ const Laporan = () => {
         )}
       </div>
 
-      {/* Tabel Rincian */}
+      {/* SECTION 1: CARDS RINGKASAN (YANG HILANG KEMARIN) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SummaryCard 
+          title="Total Saldo Keseluruhan" 
+          value={data?.total_saldo_keseluruhan} 
+          icon={Wallet} 
+          colorClass="border-blue-500" 
+        />
+        <SummaryCard 
+          title="Saldo Aplikasi Terpakai" 
+          value={data?.saldo_aplikasi_terpakai} 
+          icon={CreditCard} 
+          colorClass="border-indigo-500" 
+        />
+        <SummaryCard 
+          title="Total Transfer" 
+          value={data?.total_transfer} 
+          icon={ArrowUpRight} 
+          colorClass="border-green-500" 
+        />
+        <SummaryCard 
+          title="Total Tarik Tunai" 
+          value={data?.total_tarik_tunai} 
+          icon={ArrowDownLeft} 
+          colorClass="border-red-500" 
+        />
+        <SummaryCard 
+          title="Total Biaya Transfer" 
+          value={data?.total_biaya_transfer} 
+          icon={DollarSign} 
+          colorClass="border-purple-500" 
+        />
+        <SummaryCard 
+          title="Total Biaya Tarik" 
+          value={data?.total_biaya_tarik_tunai} 
+          icon={DollarSign} 
+          colorClass="border-orange-500" 
+        />
+        <SummaryCard 
+          title="Tarik Kartu Kredit" 
+          value={data?.total_tarik_kredit} 
+          icon={CreditCard} 
+          colorClass="border-pink-500" 
+        />
+        <SummaryCard 
+          title="Total Setor Admin" 
+          value={data?.total_setor_ke_admin} 
+          icon={Banknote} 
+          colorClass="border-yellow-500" 
+        />
+      </div>
+
+      {/* SECTION 2: TABEL RINCIAN KEUANGAN */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-6 border-b bg-gray-50 flex justify-between items-center">
-          <h3 className="font-bold text-lg text-gray-700">Rincian Keuangan</h3>
+          <h3 className="font-bold text-lg text-gray-700">Tabel Rincian Lengkap</h3>
           <div className="flex gap-2">
             <button onClick={handleExportPDF} className="flex items-center text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200">
               <Printer className="w-4 h-4 mr-1" /> Export PDF
