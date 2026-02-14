@@ -35,7 +35,7 @@ const Layout = ({ children }) => {
     { name: 'Setor Tunai ke Admin', href: '/setor', icon: ArrowUpRight },
     { name: 'Transfer Debit', href: '/transfer-debit', icon: CreditCard },
     { name: 'Tarik Tunai', href: '/tarik-tunai', icon: Banknote },
-    // PINDAHKAN LAPORAN KE SINI (Agar Kasir juga bisa lihat)
+    { name: 'Tarik Kartu Kredit', href: '/tarik-kredit', icon: CreditCard },
     { name: user?.role === 'owner' ? 'Laporan Lengkap' : 'Laporan Saya', href: '/laporan', icon: FileText },
   ];
 
