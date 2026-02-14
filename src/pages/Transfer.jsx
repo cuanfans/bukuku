@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Trash as TransferIcon, Plus, Star, Printer, Download, CheckCircle, Edit, Search, X, BarChart3 } from 'lucide-react';
+import { 
+  Trash as TransferIcon, 
+  Plus, 
+  Star, 
+  Printer, 
+  Download, 
+  CheckCircle, 
+  Edit, 
+  Search, 
+  X, 
+  BarChart3,
+  Image as ImageIcon // Tambahan icon image
+} from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -35,7 +47,8 @@ const Transfer = () => {
     nominal: '',
     biaya: '',
     total_uang: '',
-    keterangan: ''
+    keterangan: '',
+    foto_struk: '' // Tambahan state foto
   });
   
   const [transfers, setTransfers] = useState([]);
@@ -166,6 +179,22 @@ const Transfer = () => {
     }
   };
 
+  // FUNGSI BARU: Handle File Upload
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 500) { // Limit 500KB
+        alert("Ukuran foto maksimal 500KB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, foto_struk: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -201,7 +230,8 @@ const Transfer = () => {
         nominal: '',
         biaya: '',
         total_uang: '',
-        keterangan: ''
+        keterangan: '',
+        foto_struk: '' // Reset foto
       });
       
       setShowForm(false);
@@ -211,7 +241,7 @@ const Transfer = () => {
       await loadTotalSaldoKeseluruhan();
     } catch (error) {
       console.error('Error saving transfer:', error);
-      alert('Gagal menyimpan transfer');
+      alert('Gagal menyimpan transfer: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -232,7 +262,8 @@ const Transfer = () => {
       nominal: transfer.nominal?.toString() || '',
       biaya: transfer.biaya?.toString() || '',
       total_uang: '',
-      keterangan: transfer.keterangan || ''
+      keterangan: transfer.keterangan || '',
+      foto_struk: transfer.foto_struk || '' // Load foto lama jika ada
     });
     setShowForm(true);
   };
@@ -247,7 +278,8 @@ const Transfer = () => {
       nominal: '',
       biaya: '',
       total_uang: '',
-      keterangan: ''
+      keterangan: '',
+      foto_struk: ''
     });
     setShowForm(false);
   };
@@ -754,6 +786,44 @@ const Transfer = () => {
               </div>
             </div>
 
+            {/* FUNGSI BARU: Upload Foto Struk */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Foto Struk Bukti Transfer (Opsional)
+              </label>
+              <div className="flex items-center gap-4">
+                <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg border border-gray-300 flex items-center transition">
+                  <ImageIcon className="w-5 h-5 mr-2" />
+                  <span>Pilih Foto</span>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+                
+                {formData.foto_struk && (
+                  <div className="relative group">
+                    <img 
+                      src={formData.foto_struk} 
+                      alt="Preview" 
+                      className="h-16 w-16 object-cover rounded-lg border border-gray-300" 
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, foto_struk: ''})}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                      title="Hapus Foto"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <span className="text-xs text-gray-500 ml-2">*Max 500KB</span>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Keterangan
@@ -916,6 +986,10 @@ const Transfer = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
                 </th>
+                {/* Kolom Bukti Transfer (Baru) */}
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Bukti
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
@@ -943,6 +1017,18 @@ const Transfer = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCurrency(Number(transfer.nominal) + Number(transfer.biaya))}
                   </td>
+                  
+                  {/* Kolom Bukti Foto */}
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    {transfer.foto_struk ? (
+                      <a href={transfer.foto_struk} download={`struk-${transfer.id}.png`} className="text-blue-600 hover:text-blue-800 underline text-xs" title="Download Bukti">
+                        <ImageIcon className="w-5 h-5 mx-auto" />
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
+                    )}
+                  </td>
+
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
                       transfer.status === 'lunas' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
