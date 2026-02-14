@@ -12,6 +12,7 @@ import Logs from './pages/Logs';
 import SetorAdmin from './pages/SetorAdmin'; // <--- JANGAN LUPA IMPORT INI
 import Layout from './layouts/Layout';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import TarikKredit from './pages/TarikKredit'; // <-- Tambahkan import ini
 
 // Komponen untuk memproteksi halaman (Redirect ke login jika belum login)
 const ProtectedRoute = ({ children }) => {
@@ -67,6 +68,12 @@ function App() {
           <Route path="/tarik-tunai" element={
             <ProtectedRoute>
               <Layout><TarikTunai /></Layout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/tarik-kredit" element={
+            <ProtectedRoute>
+              <Layout><TarikKredit /></Layout>
             </ProtectedRoute>
           } />
 
