@@ -4,19 +4,10 @@ export const onRequestGet = async ({ request, env, data }) => {
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
     const user = data.user;
-
     let query = `SELECT * FROM transfer_debit WHERE 1=1`;
-    
-    if (user.role !== 'owner') {
-      query += ` AND user_id = ${user.id}`;
-    }
-
-    if (startDate && endDate) {
-      query += ` AND tanggal BETWEEN '${startDate}' AND '${endDate}'`;
-    }
-
+    if (user.role !== 'owner') query += ` AND user_id = ${user.id}`;
+    if (startDate && endDate) query += ` AND tanggal BETWEEN '${startDate}' AND '${endDate}'`;
     query += ` ORDER BY created_at DESC`;
-
     const { results } = await env.DB.prepare(query).all();
     return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
@@ -29,16 +20,12 @@ export const onRequestPost = async ({ request, env, data }) => {
     const { tanggal, biaya, keterangan, foto_struk } = await request.json();
     const userId = data.user.id;
 
-    // Insert ke Database
+    // PERBAIKAN LOGIKA: Status langsung 'lunas'
     const result = await env.DB.prepare(`
       INSERT INTO transfer_debit (tanggal, biaya, keterangan, status, user_id, foto_struk)
-      VALUES (?, ?, ?, 'pending', ?, ?)
+      VALUES (?, ?, ?, 'lunas', ?, ?)
     `).bind(
-      tanggal, 
-      biaya, 
-      keterangan, 
-      userId,
-      foto_struk || null
+      tanggal, biaya, keterangan, userId, foto_struk || null
     ).run();
 
     return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), { status: 201 });
