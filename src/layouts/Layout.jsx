@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   PlusCircle, 
-  Send,        // Icon untuk Transfer
+  Send,
   CreditCard, 
   Banknote, 
   FileText, 
@@ -12,16 +12,13 @@ import {
   LogOut, 
   Menu, 
   X, 
-  ArrowUpRight // Icon untuk Setor ke Admin
+  ArrowUpRight 
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Mengambil data user dari localStorage (sesuai snippet Anda)
-  // Gunakan '|| {}' untuk mencegah error jika localStorage kosong
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleLogout = () => {
@@ -30,44 +27,20 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  // Definisi Menu Navigasi Lengkap
+  // Menu Umum (Semua Role)
   const navigation = [
-    { 
-      name: 'Dashboard', 
-      href: '/', // Sesuai App.jsx, dashboard ada di root
-      icon: LayoutDashboard 
-    },
-    { 
-      name: 'Input Modal / Pemakaian', 
-      href: '/input-modal', 
-      icon: PlusCircle 
-    },
-    { 
-      name: 'Transfer Bank', 
-      href: '/transfer', 
-      icon: Send 
-    },
-    // MENU BARU: Setor ke Admin
-    { 
-      name: 'Setor Tunai ke Admin', 
-      href: '/setor', 
-      icon: ArrowUpRight 
-    },
-    { 
-      name: 'Transfer Debit', 
-      href: '/transfer-debit', 
-      icon: CreditCard 
-    },
-    { 
-      name: 'Tarik Tunai', 
-      href: '/tarik-tunai', 
-      icon: Banknote 
-    },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Input Modal / Pemakaian', href: '/input-modal', icon: PlusCircle },
+    { name: 'Transfer Bank', href: '/transfer', icon: Send },
+    { name: 'Setor Tunai ke Admin', href: '/setor', icon: ArrowUpRight },
+    { name: 'Transfer Debit', href: '/transfer-debit', icon: CreditCard },
+    { name: 'Tarik Tunai', href: '/tarik-tunai', icon: Banknote },
+    // PINDAHKAN LAPORAN KE SINI (Agar Kasir juga bisa lihat)
+    { name: user?.role === 'owner' ? 'Laporan Lengkap' : 'Laporan Saya', href: '/laporan', icon: FileText },
   ];
 
-  // Menu Tambahan Khusus Owner
+  // Menu Khusus Owner
   const ownerNavigation = [
-    { name: 'Laporan Lengkap', href: '/laporan', icon: FileText },
     { name: 'User Management', href: '/users', icon: Users },
     { name: 'Logs Aktivitas', href: '/logs', icon: Activity },
   ];
@@ -93,15 +66,12 @@ const Layout = ({ children }) => {
             <CreditCard className="h-6 w-6 mr-2" />
             <span>BUKUKU</span>
           </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white hover:text-gray-200"
-          >
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white">
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* User Info Profile */}
+        {/* User Info */}
         <div className="px-6 py-6 border-b bg-blue-50">
           <div className="flex items-center">
             <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
@@ -116,7 +86,6 @@ const Layout = ({ children }) => {
 
         {/* Navigation Links */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto h-[calc(100vh-180px)]">
-          {/* Menu Umum */}
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -125,9 +94,7 @@ const Layout = ({ children }) => {
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
@@ -139,61 +106,40 @@ const Layout = ({ children }) => {
           {/* Menu Khusus Owner */}
           {user?.role === 'owner' && (
             <>
-              <div className="mt-6 mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Administrator
-              </div>
-              {ownerNavigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
-                    {item.name}
-                  </Link>
-                );
-              })}
+              <div className="mt-6 mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Administrator</div>
+              {ownerNavigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    location.pathname === item.href ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <item.icon className="mr-3 h-5 w-5 text-gray-400" />
+                  {item.name}
+                </Link>
+              ))}
             </>
           )}
         </nav>
 
-        {/* Logout Button */}
+        {/* Logout */}
         <div className="p-4 border-t bg-gray-50">
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
+          <button onClick={handleLogout} className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
+            <LogOut className="mr-2 h-4 w-4" /> Logout
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
         <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between bg-white shadow-sm px-4 py-3">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
+          <button onClick={() => setSidebarOpen(true)} className="text-gray-500"><Menu className="h-6 w-6" /></button>
           <span className="font-bold text-gray-700">BUKUKU</span>
-          <div className="w-6"></div> {/* Spacer for centering */}
+          <div className="w-6"></div>
         </div>
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
       </div>
     </div>
   );
