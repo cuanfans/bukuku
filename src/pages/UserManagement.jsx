@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, PencilIcon, Shield, UserCheck } from 'lucide-react';
-import { api } from '../utils/api';
+import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 
 const UserManagement = () => {
