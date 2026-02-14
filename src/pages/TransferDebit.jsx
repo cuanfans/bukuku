@@ -11,7 +11,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { api } from '../utils/api'; // Pastikan path benar sesuai project Anda
+// PERBAIKAN: Import api tanpa kurawal {} karena export default
+import api from '../utils/api'; 
 import { useAuth } from '../hooks/useAuth';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -61,15 +62,9 @@ const TransferDebit = () => {
   const loadCashiers = async () => {
     try {
       const response = await api.get('/user');
-      // Akses response.data karena menggunakan Axios
-      const result = response.data;
-      const kasirList = Array.isArray(result) 
-        ? result.filter(u => u.role === 'kasir' && u.status === 'aktif')
-        : (result.results ? result.results.filter(u => u.role === 'kasir') : []);
-      setCashiers(kasirList);
+      setCashiers(Array.isArray(response.data) ? response.data : (response.data?.results || []));
     } catch (error) {
       console.error('Error loading cashiers:', error);
-      setCashiers([]);
     }
   };
 
@@ -79,7 +74,6 @@ const TransferDebit = () => {
       setTotalSaldoAllCashiers(response.data?.total || 0);
     } catch (error) {
       console.error('Error loading total saldo:', error);
-      setTotalSaldoAllCashiers(0);
     }
   };
 
@@ -87,31 +81,22 @@ const TransferDebit = () => {
     try {
       let url = '/transfer-debit';
       const params = new URLSearchParams();
-      
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      params.append('limit', 100); // Agar riwayat muncul banyak
       
-      if (params.toString()) {
-        url += '?' + params.toString();
-      }
+      const response = await api.get(url + (params.toString() ? '?' + params.toString() : ''));
       
-      const response = await api.get(url);
-      // PERBAIKAN: Akses response.data.data karena API mengirim objek pagination
+      // PERBAIKAN: Akses response.data (Axios) lalu .data (Struktur API)
       const result = response.data;
-      let transfersData = [];
-
-      if (result && result.data && Array.isArray(result.data)) {
-        transfersData = result.data;
-      } else if (Array.isArray(result)) {
-        transfersData = result;
-      }
+      let transfersData = result.data || result;
       
       if (user?.role === 'owner' && selectedCashier !== 'all') {
-        transfersData = transfersData.filter(t => t.user_id === parseInt(selectedCashier));
+        transfersData = Array.isArray(transfersData) 
+          ? transfersData.filter(t => t.user_id === parseInt(selectedCashier))
+          : [];
       }
       
-      setTransfers(transfersData);
+      setTransfers(Array.isArray(transfersData) ? transfersData : []);
     } catch (error) {
       console.error('Error loading transfer debit:', error);
       setTransfers([]);
@@ -133,22 +118,18 @@ const TransferDebit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       await api.post('/transfer-debit', formData);
-      
       setFormData({
         tanggal: new Date().toISOString().split('T')[0],
         biaya: '',
         keterangan: ''
       });
-      
       setShowForm(false);
       loadTransfers();
       alert('Transfer debit berhasil disimpan!');
     } catch (error) {
-      console.error('Error saving transfer debit:', error);
-      alert('Gagal menyimpan transfer debit');
+      alert('Gagal menyimpan');
     } finally {
       setLoading(false);
     }
@@ -156,54 +137,35 @@ const TransferDebit = () => {
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      style: 'currency', currency: 'IDR', minimumFractionDigits: 0
     }).format(amount || 0);
   };
 
-  const getKasirName = (transfer) => {
-    // Gunakan nama_kasir dari JOIN API backend
-    if (transfer.nama_kasir) return transfer.nama_kasir;
-    if (transfer.user_id && cashiers.length > 0) {
-      const cashier = cashiers.find(c => c.id === transfer.user_id);
-      return cashier ? cashier.username : 'N/A';
-    }
-    return 'N/A';
-  };
-
-  // Logika export dan grafik tetap sama sesuai file asli Anda...
-  // (Potongan kode di bawah ini tetap menjaga style Purple asli)
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex items-center">
-            <CreditCard className="h-8 w-8 text-purple-600 mr-3" />
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Transfer Pakai Kartu Debit</h2>
-              <p className="text-gray-600">Kelola transfer menggunakan kartu debit</p>
-            </div>
+      {/* Header - Purple Theme */}
+      <div className="bg-white rounded-lg shadow p-6 flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex items-center">
+          <CreditCard className="h-8 w-8 text-purple-600 mr-3" />
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Transfer Pakai Kartu Debit</h2>
+            <p className="text-gray-600">Kelola transfer menggunakan kartu debit</p>
           </div>
-          
-          <div className="flex space-x-3">
-            {user?.role !== 'owner' && (
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300 flex items-center"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Transfer Debit Baru
-              </button>
-            )}
-          </div>
+        </div>
+        <div className="flex space-x-3">
+          {user?.role !== 'owner' && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300 flex items-center"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Transfer Debit Baru
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Info Box */}
+      {/* Info Box - Purple Theme */}
       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
         <div className="flex">
           <div className="flex-shrink-0">
@@ -265,14 +227,14 @@ const TransferDebit = () => {
               />
             </div>
             <div className="flex space-x-4">
-              <button type="submit" className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">Simpan</button>
+              <button type="submit" disabled={loading} className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">Simpan</button>
               <button type="button" onClick={() => setShowForm(false)} className="bg-gray-600 text-white px-6 py-2 rounded-lg">Batal</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Riwayat Transaksi */}
+      {/* Riwayat Transaksi - Menggunakan nama_kasir dari JOIN API */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center text-sm">
           <h3 className="font-bold">Riwayat Transaksi</h3>
@@ -301,7 +263,7 @@ const TransferDebit = () => {
             {transfers.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
                 <td className="p-4">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
-                <td className="p-4">{getKasirName(t)}</td>
+                <td className="p-4 font-medium">{t.nama_kasir || 'N/A'}</td>
                 <td className="p-4 font-bold">{formatCurrency(t.biaya)}</td>
                 <td className="p-4">{t.keterangan}</td>
                 <td className="p-4">
