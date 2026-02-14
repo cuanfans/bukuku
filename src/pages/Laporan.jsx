@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Calendar, Filter } from 'lucide-react';
-import { api } from '../utils/api';
+import api from '../utils/api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 
