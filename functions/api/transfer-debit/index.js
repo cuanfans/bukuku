@@ -1,15 +1,44 @@
 export const onRequestGet = async ({ request, env, data }) => {
   try {
     const url = new URL(request.url);
+    const user = data.user;
+    const page = parseInt(url.searchParams.get('page')) || 1;
+    const limit = parseInt(url.searchParams.get('limit')) || 10;
+    const offset = (page - 1) * limit;
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
-    const user = data.user;
-    let query = `SELECT * FROM transfer_debit WHERE 1=1`;
-    if (user.role !== 'owner') query += ` AND user_id = ${user.id}`;
-    if (startDate && endDate) query += ` AND tanggal BETWEEN '${startDate}' AND '${endDate}'`;
-    query += ` ORDER BY created_at DESC`;
-    const { results } = await env.DB.prepare(query).all();
-    return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } });
+
+    let queryBase = `FROM transfer_debit WHERE 1=1`;
+    let queryParams = [];
+
+    if (user.role !== 'owner') {
+      queryBase += ` AND user_id = ?`;
+      queryParams.push(user.id);
+    }
+
+    if (startDate && endDate) {
+      queryBase += ` AND tanggal BETWEEN ? AND ?`;
+      queryParams.push(startDate, endDate);
+    }
+
+    // 1. Hitung total data untuk pagination
+    const totalRow = await env.DB.prepare(`SELECT COUNT(*) as total ${queryBase}`).bind(...queryParams).first();
+    
+    // 2. Ambil data dengan urutan terbaru dan limit
+    const { results } = await env.DB.prepare(`SELECT * ${queryBase} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .bind(...queryParams, limit, offset)
+      .all();
+
+    return new Response(JSON.stringify({
+      data: results,
+      pagination: {
+        page,
+        limit,
+        total: totalRow.total,
+        totalPages: Math.ceil(totalRow.total / limit)
+      }
+    }), { headers: { 'Content-Type': 'application/json' } });
+
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
@@ -20,7 +49,11 @@ export const onRequestPost = async ({ request, env, data }) => {
     const { tanggal, biaya, keterangan, foto_struk } = await request.json();
     const userId = data.user.id;
 
-    // PERBAIKAN LOGIKA: Status langsung 'lunas'
+    if (!biaya || biaya < 0) {
+      return new Response(JSON.stringify({ error: 'Biaya tidak valid' }), { status: 400 });
+    }
+
+    // Status langsung 'lunas' agar konsisten dengan pencatatan manual
     const result = await env.DB.prepare(`
       INSERT INTO transfer_debit (tanggal, biaya, keterangan, status, user_id, foto_struk)
       VALUES (?, ?, ?, 'lunas', ?, ?)
