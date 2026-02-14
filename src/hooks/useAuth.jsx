@@ -1,46 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../utils/api';
+import api from '../utils/api'; // PERBAIKAN DISINI (Tanpa kurung kurawal)
 
 const AuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Cek status login saat aplikasi dimuat
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      setUser(JSON.parse(userData));
-    }
-    setLoading(false);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+
+      if (token && savedUser) {
+        setUser(JSON.parse(savedUser));
+        // Opsional: Validasi token ke server jika perlu
+        // try { await api.get('/auth/me'); } catch { logout(); }
+      }
+      setLoading(false);
+    };
+    checkAuth();
   }, []);
 
   const login = async (username, password) => {
     try {
-      const response = await api.post('/login', { username, password });
-      const { token, user: userData } = response;
+      // Panggil endpoint login serverless kita
+      const response = await api.post('/auth/login', { username, password });
       
-      if (!token || !userData) {
-        return { success: false, message: 'Login gagal: Response tidak valid' };
-      }
+      const { token, user } = response.data;
       
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(user));
+      setUser(user);
       
       return { success: true };
     } catch (error) {
-      return { success: false, message: error.message || 'Login gagal' };
+      console.error("Login failed:", error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Login gagal' 
+      };
     }
   };
 
@@ -52,7 +52,29 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);
+
+// Komponen helper untuk memproteksi rute
+import { Navigate, useLocation } from 'react-router-dom';
+
+const RequireAuth = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+export default RequireAuth;
