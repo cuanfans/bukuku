@@ -1,356 +1,215 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, PencilIcon, Shield, UserCheck } from 'lucide-react';
-import api from '../utils/api';
+import { Plus, Trash2, Edit2, User, Key, Shield } from 'lucide-react';
+import api from '../utils/api'; // Pastikan import tanpa kurung kurawal
 import { useAuth } from '../hooks/useAuth';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    role: 'kasir',
-    status: 'aktif'
-  });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ username: '', password: '', role: 'kasir' });
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+
   const { user: currentUser } = useAuth();
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
+  // Load Users
+  const fetchUsers = async () => {
     try {
-      const response = await api.get('/user');
-      setUsers(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      setUsers([]);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      if (editingUser) {
-        await api.put(`/user/${editingUser.id}`, formData);
-        alert('User berhasil diupdate!');
+      setLoading(true);
+      // PERBAIKAN: Gunakan endpoint tunggal '/user' sesuai backend functions
+      const response = await api.get('/user'); 
+      
+      // PERBAIKAN: Backend Cloudflare mengembalikan array langsung, bukan object {data: [...]}
+      // Jadi kita cek apakah response.data itu array
+      if (Array.isArray(response.data)) {
+        setUsers(response.data);
+      } else if (response.data && Array.isArray(response.data.results)) {
+        // Fallback jika nanti backend berubah format
+        setUsers(response.data.results);
       } else {
-        await api.post('/user', formData);
-        alert('User berhasil ditambahkan!');
+        setUsers([]);
       }
-
-      setFormData({
-        username: '',
-        password: '',
-        role: 'kasir',
-        status: 'aktif'
-      });
-      setShowForm(false);
-      setEditingUser(null);
-      loadUsers();
-    } catch (error) {
-      console.error('Error saving user:', error);
-      alert('Gagal menyimpan user');
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Gagal memuat data user.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (user) => {
-    setEditingUser(user);
-    setFormData({
-      username: user.username,
-      password: '',
-      role: user.role,
-      status: user.status
-    });
-    setShowForm(true);
-  };
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const handleStatusChange = async (userId, newStatus) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
     try {
-      await api.put(`/user/${userId}`, { status: newStatus });
-      loadUsers();
-      alert('Status user berhasil diubah!');
-    } catch (error) {
-      console.error('Error changing user status:', error);
-      alert('Gagal mengubah status user');
+      if (editingId) {
+        // Mode Edit
+        const dataToSend = { ...formData, id: editingId };
+        if (!dataToSend.password) delete dataToSend.password; // Jangan kirim password kosong saat edit
+        
+        await api.put('/user', dataToSend);
+      } else {
+        // Mode Tambah Baru
+        await api.post('/user', formData);
+      }
+      
+      setShowModal(false);
+      setFormData({ username: '', password: '', role: 'kasir' });
+      setEditingId(null);
+      fetchUsers(); // Refresh list
+    } catch (err) {
+      setError(err.response?.data?.error || 'Gagal menyimpan user.');
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      username: '',
-      password: '',
-      role: 'kasir',
-      status: 'aktif'
-    });
-    setShowForm(false);
-    setEditingUser(null);
+  const handleEdit = (user) => {
+    setEditingId(user.id);
+    setFormData({ username: user.username, password: '', role: user.role });
+    setShowModal(true);
   };
 
-  if (currentUser?.role !== 'owner') {
-    return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Akses Ditolak</h2>
-        <p className="text-gray-600">Hanya owner yang dapat mengakses halaman ini.</p>
-      </div>
-    );
-  }
+  const handleDelete = async (id) => {
+    if (!window.confirm('Yakin ingin menghapus user ini?')) return;
+    try {
+      // Backend DELETE support via query param ?id=...
+      await api.delete(`/user?id=${id}`);
+      fetchUsers();
+    } catch (err) {
+      alert('Gagal menghapus user: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center">Loading users...</div>;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex items-center">
-            <Users className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">User Management</h2>
-              <p className="text-gray-600">Kelola user kasir dan owner</p>
-            </div>
-          </div>
-          
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Tambah User
-          </button>
-        </div>
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+          <Users className="mr-2" /> Manajemen User
+        </h2>
+        <button 
+          onClick={() => {
+            setEditingId(null);
+            setFormData({ username: '', password: '', role: 'kasir' });
+            setShowModal(true);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700"
+        >
+          <Plus className="mr-2 h-4 w-4" /> Tambah User
+        </button>
       </div>
 
-      {/* Form */}
-      {showForm && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            {editingUser ? 'Edit User' : 'Tambah User Baru'}
-          </h3>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Masukkan username"
-                  required
-                />
-              </div>
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password {editingUser && '(kosongkan jika tidak diubah)'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Masukkan password"
-                  required={!editingUser}
-                />
-              </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {users.map((u) => (
+              <tr key={u.id}>
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{u.username}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${u.role === 'owner' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
+                    {u.role}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.status || 'Aktif'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleEdit(u)} className="text-blue-600 hover:text-blue-900 mr-4">
+                    <Edit2 className="h-5 w-5" />
+                  </button>
+                  {u.username !== 'admin' && u.id !== currentUser?.id && (
+                    <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:text-red-900">
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="kasir">Kasir</option>
-                  <option value="owner">Owner</option>
-                </select>
+      {/* Modal Form */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">{editingId ? 'Edit User' : 'Tambah User Baru'}</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">Username</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <input 
+                    type="text" 
+                    className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.username}
+                    onChange={(e) => setFormData({...formData, username: e.target.value})}
+                    required
+                  />
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex space-x-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300 disabled:opacity-50"
-              >
-                {loading ? 'Menyimpan...' : (editingUser ? 'Update' : 'Simpan')}
-              </button>
               
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition duration-300"
-              >
-                Batal
-              </button>
-            </div>
-          </form>
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">Password {editingId && '(Kosongkan jika tidak diubah)'}</label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <input 
+                    type="password" 
+                    className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    required={!editingId}
+                  />
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2">Role</label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <select 
+                    className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    value={formData.role}
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                  >
+                    <option value="kasir">Kasir</option>
+                    <option value="owner">Owner / Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
-
-      {/* User List */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">Daftar User</h3>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Username
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Dibuat
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">
-                          {user.username.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.username}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                      user.role === 'owner' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                      user.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.created_at).toLocaleDateString('id-ID')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleEdit(user)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="Edit"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleStatusChange(user.id, user.status === 'aktif' ? 'nonaktif' : 'aktif')}
-                      className={`${user.status === 'aktif' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
-                      title={user.status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan'}
-                    >
-                      <UserCheck className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistik User</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm font-medium text-blue-600">Total User</div>
-            <div className="text-xl md:text-2xl font-bold text-blue-900">
-              {users.length}
-            </div>
-          </div>
-          
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm font-medium text-green-600">User Aktif</div>
-            <div className="text-xl md:text-2xl font-bold text-green-900">
-              {users.filter(u => u.status === 'aktif').length}
-            </div>
-          </div>
-          
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="text-sm font-medium text-purple-600">Owner</div>
-            <div className="text-xl md:text-2xl font-bold text-purple-900">
-              {users.filter(u => u.role === 'owner').length}
-            </div>
-          </div>
-          
-          <div className="bg-orange-50 p-4 rounded-lg">
-            <div className="text-sm font-medium text-orange-600">Kasir</div>
-            <div className="text-xl md:text-2xl font-bold text-orange-900">
-              {users.filter(u => u.role === 'kasir').length}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <Shield className="h-5 w-5 text-blue-400" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">Catatan Penting</h3>
-            <div className="mt-2 text-sm text-blue-700">
-              <ul className="list-disc list-inside space-y-1">
-                <li>Owner dapat login di maksimal 5 perangkat bersamaan</li>
-                <li>Kasir hanya dapat mengakses data transaksi mereka sendiri</li>
-                <li>Owner memiliki akses ke semua data kasir</li>
-                <li>Semua transaksi kasir harus disetujui owner untuk status LUNAS</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
