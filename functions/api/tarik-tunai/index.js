@@ -36,7 +36,7 @@ export const onRequestPost = async ({ request, env, data }) => {
     // Insert ke Database
     const result = await env.DB.prepare(`
       INSERT INTO tarik_tunai (tanggal, bank, nominal_tarik, biaya_tarik, keterangan, status, user_id, foto_struk)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+      VALUES (?, ?, ?, ?, ?, 'lunas', ?, ?)
     `).bind(
       tanggal, 
       bank, 
