@@ -5,9 +5,10 @@ export const onRequestGet = async ({ request, env, data }) => {
     const endDate = url.searchParams.get('endDate');
     const user = data.user;
 
+    // Mulai query dasar
     let query = `SELECT * FROM transfer WHERE 1=1`;
     
-    // Filter: Kasir hanya lihat datanya sendiri, Owner lihat semua (kecuali difilter)
+    // Filter Role: Kasir hanya lihat datanya sendiri, Owner lihat semua
     if (user.role !== 'owner') {
       query += ` AND user_id = ${user.id}`;
     }
@@ -17,9 +18,10 @@ export const onRequestGet = async ({ request, env, data }) => {
       query += ` AND tanggal BETWEEN '${startDate}' AND '${endDate}'`;
     }
     
-    // Exclude Setoran Admin (karena ada menu sendiri)
+    // PENTING: Exclude 'SETOR_ADMIN' agar tidak tercampur dengan menu Setor Tunai
     query += ` AND bank_tujuan != 'SETOR_ADMIN'`;
 
+    // Urutkan dari yang terbaru
     query += ` ORDER BY created_at DESC`;
 
     const { results } = await env.DB.prepare(query).all();
@@ -34,15 +36,27 @@ export const onRequestPost = async ({ request, env, data }) => {
     const { tanggal, bank_tujuan, nomor_rekening, nama_pemilik, nominal, biaya, keterangan, foto_struk } = await request.json();
     const userId = data.user.id;
 
-    // Validasi sederhana
+    // VALIDASI: Nominal wajib diisi dan harus positif
     if (!nominal || nominal <= 0) {
-      return new Response(JSON.stringify({ error: 'Nominal harus diisi' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Nominal harus diisi dan lebih dari 0' }), { status: 400 });
     }
 
-    // Insert ke Database
+    // INSERT DATABASE
+    // Status diset langsung 'lunas' agar saldo langsung terpotong (via trigger DB)
     const result = await env.DB.prepare(`
-      INSERT INTO transfer (tanggal, bank_tujuan, nomor_rekening, nama_pemilik, nominal, biaya, keterangan, status, user_id, foto_struk)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+      INSERT INTO transfer (
+        tanggal, 
+        bank_tujuan, 
+        nomor_rekening, 
+        nama_pemilik, 
+        nominal, 
+        biaya, 
+        keterangan, 
+        status, 
+        user_id, 
+        foto_struk
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'lunas', ?, ?)
     `).bind(
       tanggal, 
       bank_tujuan, 
@@ -51,7 +65,7 @@ export const onRequestPost = async ({ request, env, data }) => {
       nominal, 
       biaya || 0, 
       keterangan, 
-      userId,
+      userId, 
       foto_struk || null
     ).run();
 
