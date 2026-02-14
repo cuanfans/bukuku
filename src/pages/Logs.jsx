@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, Search, Filter, Calendar, Download, RefreshCw } from 'lucide-react';
-import { api } from '../utils/api';
+import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
 
