@@ -11,7 +11,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { api } from '../utils/api';
+import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
